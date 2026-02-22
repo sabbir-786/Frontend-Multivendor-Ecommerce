@@ -1,5 +1,4 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { authApi } from '../api/authapi';
 
 // --- Async Thunks ---
 
@@ -8,7 +7,7 @@ export const sendOtp = createAsyncThunk(
     'auth/sendOtp',
     async (payload, { rejectWithValue }) => {
         try {
-            const response = await authApi.sendOtp(payload);
+            const response = await authapi.sendOtp(payload);
             return response.data;
         } catch (error) {
             const message = error.response?.data?.message || error.response?.data || 'Failed to send OTP.';
@@ -22,7 +21,7 @@ export const verifyOtp = createAsyncThunk(
     'auth/verifyOtp',
     async (payload, { rejectWithValue }) => {
         try {
-            const response = await authApi.verifyOtp(payload);
+            const response = await authapi.verifyOtp(payload);
             const user = payload.email ? { email: payload.email } : { mobile: payload.mobile };
             return {
                 jwt: response.data.jwt,
@@ -46,7 +45,7 @@ export const registerSeller = createAsyncThunk(
     'auth/registerSeller',
     async (payload, { rejectWithValue }) => {
         try {
-            const response = await authApi.registerSeller(payload);
+            const response = await authapi.registerSeller(payload);
 
             return {
                 jwt: response.data.jwt,
@@ -73,7 +72,7 @@ export const updateUserProfile = createAsyncThunk(
     'auth/updateUserProfile',
     async (payload, { rejectWithValue }) => {
         try {
-            const response = await authApi.updateUserProfile(payload);
+            const response = await authapi.updateUserProfile(payload);
             return response.data;
         } catch (error) {
             return rejectWithValue(error.response?.data?.message || 'Update failed.');
@@ -87,7 +86,7 @@ export const getUserProfile = createAsyncThunk(
     async (_, { rejectWithValue }) => {
         try {
             // FIXED: Removed the undefined 'payload' variable here
-            const response = await authApi.getUserProfile();
+            const response = await authapi.getUserProfile();
             return response.data;
         } catch (error) {
             return rejectWithValue(error.response?.data?.message || 'Failed to fetch profile.');

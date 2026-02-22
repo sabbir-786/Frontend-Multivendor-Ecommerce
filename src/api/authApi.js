@@ -1,7 +1,7 @@
 import api from './axios';
 
 // The "Operator" that handles all auth-related requests
-export const authApi = {
+export const authapi = {
     sendOtp: (payload) => api.post('/auth/sent/login-signup-otp', payload),
     verifyOtp: (payload) => api.post('/auth/signin', payload),
     registerSeller: (payload) => api.post('/auth/signup', payload),
