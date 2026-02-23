@@ -8,7 +8,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { sendOtp, verifyOtp } from "../store/authSlice";
 import { Loader2, ArrowLeft, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
-import { toast } from "sonner"; // ✅ SONNER USE HO RAHA HAI
+import { toast } from "sonner";
 
 // --- Validation Schema ---
 const loginSchema = z.object({
@@ -177,7 +177,7 @@ export default function Login() {
                                     {...register("contact")}
                                     disabled={step === 2 || isFormLoading}
                                     className="w-full bg-transparent border-b border-gray-300 py-3 text-gray-900 text-lg font-light focus:border-black focus:outline-none transition-colors placeholder-gray-300"
-                                    placeholder="name@example.com or 9876543210"
+                                    placeholder="Email | Mobile Number"
                                 />
                                 {errors.contact && (
                                     <p className="text-[10px] text-red-500 font-medium uppercase tracking-wider mt-2">
@@ -240,15 +240,6 @@ export default function Login() {
                     {/* Footer */}
                     {step === 1 && (
                         <div className="text-center pt-4">
-                            <p className="text-gray-500 font-light text-sm">
-                                Not a member yet?{" "}
-                                <Link
-                                    to="/register"
-                                    className="font-bold text-black border-b border-black/20 hover:border-black transition-colors pb-0.5 ml-1"
-                                >
-                                    Create an account
-                                </Link>
-                            </p>
                             {/* Adding quick link for Seller Signup */}
                             <p className="text-gray-500 font-light text-sm mt-2">
                                 Want to sell with us?{" "}

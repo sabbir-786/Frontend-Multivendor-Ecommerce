@@ -1,8 +1,17 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import api from '../api/axios';
+
+// --- The "Operator" ---
+export const authapi = {
+    sendOtp: (payload) => api.post('/auth/sent/login-signup-otp', payload),
+    verifyOtp: (payload) => api.post('/auth/signin', payload),
+    registerSeller: (payload) => api.post('/auth/signup', payload),
+    getUserProfile: () => api.get('/api/users/profile'),
+    updateUserProfile: (payload) => api.patch('/api/users/profile', payload),
+};
 
 // --- Async Thunks ---
 
-// 1. Send OTP
 export const sendOtp = createAsyncThunk(
     'auth/sendOtp',
     async (payload, { rejectWithValue }) => {
@@ -10,64 +19,67 @@ export const sendOtp = createAsyncThunk(
             const response = await authapi.sendOtp(payload);
             return response.data;
         } catch (error) {
-            const message = error.response?.data?.message || error.response?.data || 'Failed to send OTP.';
-            return rejectWithValue(typeof message === 'string' ? message : 'Failed to send OTP.');
+            const message = error.response?.data?.message || 'Failed to send OTP.';
+            return rejectWithValue(message);
         }
     }
 );
 
-// 2. Verify OTP & Login
+// Fetch Full User Profile
+export const getUserProfile = createAsyncThunk(
+    'auth/getUserProfile',
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await authapi.getUserProfile();
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.message || 'Failed to fetch profile.');
+        }
+    }
+);
+
 export const verifyOtp = createAsyncThunk(
     'auth/verifyOtp',
-    async (payload, { rejectWithValue }) => {
+    async (payload, { dispatch, rejectWithValue }) => {
         try {
+            // 1. Verify OTP and get the JWT
             const response = await authapi.verifyOtp(payload);
-            const user = payload.email ? { email: payload.email } : { mobile: payload.mobile };
+            const { jwt, role } = response.data;
+
+            // 2. Temporarily set token in localStorage so the next request works
+            localStorage.setItem('jwt', jwt);
+
+            // 3. Immediately fetch the full user profile from the database
+            const profileAction = await dispatch(getUserProfile());
+            const userProfile = profileAction.payload;
+
             return {
-                jwt: response.data.jwt,
-                role: response.data.role,
-                user: { ...user, fullName: response.data.fullName || user.email }
+                jwt,
+                role,
+                user: userProfile // Now we have the REAL fullName and details!
             };
         } catch (error) {
-            const errorMessage =
-                error.response?.data?.message ||
-                error.response?.data?.error ||
-                (typeof error.response?.data === 'string' ? error.response.data : null) ||
-                'Invalid or Expired OTP';
-
+            const errorMessage = error.response?.data?.message || 'Invalid or Expired OTP';
             return rejectWithValue(errorMessage);
         }
     }
 );
 
-// 3. Register Seller
 export const registerSeller = createAsyncThunk(
     'auth/registerSeller',
     async (payload, { rejectWithValue }) => {
         try {
             const response = await authapi.registerSeller(payload);
-
-            return {
-                jwt: response.data.jwt,
-                role: response.data.role,
-                user: {
-                    email: payload.email,
-                    fullName: payload.fullName,
-                    mobile: payload.mobile
-                }
-            };
+            // We just return the success message, intentionally throwing away the JWT
+            // so the user is forced to route to /login
+            return response.data.message || "Registration successful. Please log in.";
         } catch (error) {
-            const errorMessage =
-                error.response?.data?.message ||
-                (typeof error.response?.data === 'string' ? error.response.data : null) ||
-                'Registration failed.';
-
+            const errorMessage = error.response?.data?.message || 'Registration failed.';
             return rejectWithValue(errorMessage);
         }
     }
 );
 
-// 4. Update User Profile
 export const updateUserProfile = createAsyncThunk(
     'auth/updateUserProfile',
     async (payload, { rejectWithValue }) => {
@@ -76,20 +88,6 @@ export const updateUserProfile = createAsyncThunk(
             return response.data;
         } catch (error) {
             return rejectWithValue(error.response?.data?.message || 'Update failed.');
-        }
-    }
-);
-
-// 5. Fetch Full User Profile
-export const getUserProfile = createAsyncThunk(
-    'auth/getUserProfile',
-    async (_, { rejectWithValue }) => {
-        try {
-            // FIXED: Removed the undefined 'payload' variable here
-            const response = await authapi.getUserProfile();
-            return response.data;
-        } catch (error) {
-            return rejectWithValue(error.response?.data?.message || 'Failed to fetch profile.');
         }
     }
 );
@@ -108,6 +106,7 @@ const initialState = {
     error: null,
 };
 
+// --- Slice ---
 const authSlice = createSlice({
     name: 'auth',
     initialState,
@@ -141,15 +140,10 @@ const authSlice = createSlice({
                 state.user = { ...state.user, ...action.payload };
                 localStorage.setItem("user", JSON.stringify(state.user));
             })
-
-            // --- THE FIX: Handle Registration Separately ---
             .addCase(registerSeller.fulfilled, (state) => {
                 state.isLoading = false;
-                // We intentionally DO NOT set isAuthenticated or save the token here.
-                // This ensures the user stays logged out and the GuestGuard lets them route to /login.
+                // Intentional: User stays logged out
             })
-            // -----------------------------------------------
-
             .addMatcher(
                 (action) => action.type.endsWith('/pending'),
                 (state) => {
@@ -164,9 +158,6 @@ const authSlice = createSlice({
                     state.error = action.payload;
                 }
             )
-
-            // --- LOGIN ONLY MATCHER ---
-            // Removed registerSeller.fulfilled.type from this array
             .addMatcher(
                 (action) => [verifyOtp.fulfilled.type].includes(action.type),
                 (state, action) => {
