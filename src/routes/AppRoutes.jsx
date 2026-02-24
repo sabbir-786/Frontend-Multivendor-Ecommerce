@@ -27,18 +27,19 @@ const AppRoutes = () => {
     return (
         <Routes>
 
-            {/* --- GUEST ROUTES (Redirects logged-in users away) --- */}
+            {/* --- PUBLIC ROUTES (Visible to everyone, logged in or not) --- */}
+            <Route element={<MainLayout />}>
+                <Route path="/" element={<Home />} />
+            </Route>
+
+            {/* --- GUEST ROUTES (Only for users who are NOT logged in) --- */}
             <Route element={<GuestGuard />}>
                 <Route path="/login" element={<Login />} />
-                <Route path="/seller-signup" element={<SellerSignup />} />
-
-                <Route element={<MainLayout />}>
-                    <Route path="/" element={<Home />} />
-                </Route>
+                {/* Fixed the path to use a slash so it matches your URL */}
+                <Route path="/seller/signup" element={<SellerSignup />} />
             </Route>
 
             {/* --- CUSTOMER PROTECTED ROUTES --- */}
-            {/* 2. Replaced 'ROLE_CUSTOMER' with USER_ROLES.CUSTOMER */}
             <Route element={<RoleGuard allowedRoles={[USER_ROLES.CUSTOMER]} />}>
                 <Route element={<MainLayout />}>
                     <Route path='/account' element={<AccountProfile />} />
@@ -46,7 +47,6 @@ const AppRoutes = () => {
             </Route>
 
             {/* --- SELLER ROUTES (Protected) --- */}
-            {/* 3. Replaced 'ROLE_SELLER' with USER_ROLES.SELLER */}
             <Route element={<RoleGuard allowedRoles={[USER_ROLES.SELLER]} />}>
                 <Route element={<DashboardLayout role="seller" />}>
                     <Route path="/seller/dashboard" element={<SellerDashboard />} />
@@ -54,7 +54,6 @@ const AppRoutes = () => {
             </Route>
 
             {/* --- ADMIN ROUTES (Protected) --- */}
-            {/* 4. Replaced 'ROLE_ADMIN' with USER_ROLES.ADMIN */}
             <Route element={<RoleGuard allowedRoles={[USER_ROLES.ADMIN]} />}>
                 <Route element={<DashboardLayout role="admin" />}>
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />

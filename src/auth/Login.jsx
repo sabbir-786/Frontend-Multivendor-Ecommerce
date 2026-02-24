@@ -91,12 +91,10 @@ export default function Login() {
                 else navigate("/");
 
             } catch (error) {
-                // ✅ EXACT BACKEND ERROR MESSAGE UI PAR DIKHEGA
                 toast.error("Authentication Failed", {
                     description: error || "Please check your OTP and try again.",
                 });
 
-                // Agar seller approved nahi hai, toh wapas step 1 par bhej do (optional)
                 if (typeof error === 'string' && error.includes("approved by Admin")) {
                     setStep(1);
                 }

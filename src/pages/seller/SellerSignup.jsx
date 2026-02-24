@@ -3,8 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate, Link } from 'react-router-dom';
-import { useDispatch } from 'react-redux'; // ✅ IMPORTED DISPATCH
-import { registerSeller } from '../../store/authSlice'; // ✅ IMPORTED THUNK (Adjust path if needed)
+import { useDispatch } from 'react-redux';
+import { registerSeller } from '../../store/authSlice';
 import api from '../../api/axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 
 // --- VALIDATION SCHEMAS ---
-
 const accountSchema = z.object({
     sellerName: z.string().min(2, "Name is required"),
     email: z.string().email("Invalid business email"),
@@ -39,7 +38,7 @@ const bankSchema = z.object({
 
 const SellerSignup = () => {
     const navigate = useNavigate();
-    const dispatch = useDispatch(); // ✅ INITIALIZED DISPATCH
+    const dispatch = useDispatch();
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -101,7 +100,7 @@ const SellerSignup = () => {
 
         try {
             await api.post('/auth/verify-otp-only', {
-                email: type === 'email' ? value : null, // ✅ FIXED: Pass exact fields backend expects
+                email: type === 'email' ? value : null,
                 mobile: type === 'mobile' ? value : null,
                 otp: otp
             });
@@ -133,28 +132,50 @@ const SellerSignup = () => {
         }
     };
 
-    // ✅ FIXED SUBMIT HANDLER
+    // ✅ FIXED: Map React flat data to Spring Boot nested DTO
     const handleFinalSubmit = async (data) => {
         setIsSubmitting(true);
         const finalData = { ...formData, ...data };
 
         try {
-            // Flatten payload to match backend SignupRequest DTO
+            // Nested Payload mapping perfectly to the Java `SignupRequest`
             const payload = {
                 fullName: finalData.sellerName,
                 email: finalData.email,
                 mobile: finalData.mobile,
                 password: finalData.password,
-                otp: emailOtp, // Send email OTP for final backend validation
+                otp: emailOtp, // Assuming email OTP is used for backend final verification
                 role: "ROLE_SELLER",
                 shopName: finalData.businessName,
                 gstin: finalData.GSTIN,
-                businessName: finalData.businessName,
-                address: finalData.address
-                // Note: If your backend needs Bank Details, add them flat here or update your DTO!
+
+                // Nested BusinessDetailsRequest
+                businessDetails: {
+                    businessName: finalData.businessName,
+                    businessEmail: finalData.email,
+                    businessMobile: finalData.mobile,
+                    businessAddress: finalData.address
+                },
+
+                // Nested BankDetailsRequest
+                bankDetails: {
+                    accountNumber: finalData.accountNumber,
+                    accountHolderName: finalData.accountHolderName,
+                    bankName: finalData.bankName,
+                    ifscCode: finalData.ifscCode
+                },
+
+                // Nested AddressRequest
+                pickupAddress: {
+                    name: finalData.sellerName,
+                    address: finalData.address,
+                    city: finalData.city,
+                    state: finalData.state,
+                    pinCode: finalData.pinCode,
+                    mobile: finalData.mobile
+                }
             };
 
-            // ✅ DISPATCH REDUX THUNK INSTEAD OF RAW AXIOS CALL
             await dispatch(registerSeller(payload)).unwrap();
 
             toast.success("Registration Successful", {
@@ -188,7 +209,6 @@ const SellerSignup = () => {
 
     return (
         <div className="min-h-screen bg-white flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans selection:bg-black selection:text-white relative">
-            {/* Minimal Back Button */}
             {step > 1 ? (
                 <button
                     onClick={() => setStep(prev => prev - 1)}

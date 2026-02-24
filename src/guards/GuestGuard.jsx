@@ -1,14 +1,12 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { USER_ROLES } from '../constants/roles'; // <-- 1. Import your constants
+import { USER_ROLES } from '../constants/roles';
 
 const GuestGuard = () => {
-    // Destructure 'role' directly from the auth state
     const { isAuthenticated, user, role } = useSelector((state) => state.auth);
 
     if (isAuthenticated && user) {
-        // 2. Use the constants instead of hardcoded strings
         if (role === USER_ROLES.ADMIN) {
             return <Navigate to="/admin/dashboard" replace />;
         }
@@ -16,10 +14,12 @@ const GuestGuard = () => {
             return <Navigate to="/seller/dashboard" replace />;
         }
         if (role === USER_ROLES.CUSTOMER) {
-            return <Navigate to="/account" replace />;
+            // FIXED: Redirects to home page instead of /account
+            return <Navigate to="/" replace />;
         }
     }
 
+    // Unauthenticated users will hit this and be allowed to see the signup/login pages
     return <Outlet />;
 };
 
