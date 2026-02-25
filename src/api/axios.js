@@ -1,10 +1,13 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'https://multivendorecommerce-production-000c.up.railway.app', // Your backend URL
+    baseURL: 'http://localhost:5454',
+    headers: {
+        'Content-Type': 'application/json',
+    }
 });
 
-// --- REQUEST INTERCEPTOR (You already have this, it's perfect) ---
+// --- REQUEST INTERCEPTOR ---
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('jwt');
@@ -16,27 +19,39 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// --- RESPONSE INTERCEPTOR (The Pro-Tier Upgrade) ---
+// --- RESPONSE INTERCEPTOR (Smart 401 Handling) ---
 api.interceptors.response.use(
     (response) => {
-        // If the request succeeds, just return the response normally
         return response;
     },
     (error) => {
-        // If the server sends an error, check if it's a 401 Unauthorized
         if (error.response && error.response.status === 401) {
-            console.warn("Token expired or invalid. Logging out...");
+            const errorMessage = error.response?.data?.message || '';
 
-            // 1. Clear the bad data from storage
+            // Match exact backend error messages
+            const isAccountStatusError =
+                errorMessage.includes('pending admin approval') ||
+                errorMessage.includes('suspended or banned') ||
+                errorMessage.includes('Account Status:') ||
+                errorMessage.includes('pending') ||
+                errorMessage.includes('approval') ||
+                errorMessage.includes('suspended') ||
+                errorMessage.includes('banned') ||
+                errorMessage.includes('deactivated');
+
+            if (isAccountStatusError) {
+                // Let the error bubble up so Login.jsx can show the Error Box UI
+                return Promise.reject(error);
+            }
+
+            // Only auto-logout for TRUE authentication failures (expired JWTs)
             localStorage.removeItem('jwt');
             localStorage.removeItem('role');
             localStorage.removeItem('user');
 
-            // 2. Force the browser back to the login page
             window.location.href = '/login';
         }
 
-        // Return the error so your Redux thunks can still catch it
         return Promise.reject(error);
     }
 );

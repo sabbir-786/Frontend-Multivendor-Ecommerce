@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../api/axios';
 
-// --- The "Operator" ---
+// --- API Operators ---
 export const authapi = {
     sendOtp: (payload) => api.post('/auth/sent/login-signup-otp', payload),
     verifyOtp: (payload) => api.post('/auth/signin', payload),
@@ -19,7 +19,6 @@ export const sendOtp = createAsyncThunk(
             const response = await authapi.sendOtp(payload);
             return response.data;
         } catch (error) {
-            // Check for backend message, fallback to generic axios error message
             const message = error.response?.data?.message || error.message || 'Failed to send OTP.';
             return rejectWithValue(message);
         }
@@ -50,7 +49,6 @@ export const verifyOtp = createAsyncThunk(
             localStorage.setItem('jwt', jwt);
 
             // 3. Immediately fetch the full user profile from the database
-            // 🚨 FIX: Added .unwrap() so if this fails, it jumps to the catch block!
             const userProfile = await dispatch(getUserProfile()).unwrap();
 
             return {
@@ -62,15 +60,19 @@ export const verifyOtp = createAsyncThunk(
             // Clean up the invalid token if the process fails mid-way
             localStorage.removeItem('jwt');
 
-            // 🚨 FIX: Safely extract the error.
-            // If the error came from getUserProfile().unwrap(), it's already a string.
             if (typeof error === 'string') {
                 return rejectWithValue(error);
             }
 
-            // Otherwise, it's an Axios error from authapi.verifyOtp
-            const errorMessage = error.response?.data?.message || 'Invalid or Expired OTP';
-            return rejectWithValue(errorMessage);
+            if (error?.message && typeof error.message === 'string') {
+                return rejectWithValue(error.message);
+            }
+
+            if (error?.response?.data?.message) {
+                return rejectWithValue(error.response.data.message);
+            }
+
+            return rejectWithValue('Invalid or Expired OTP');
         }
     }
 );
@@ -80,7 +82,7 @@ export const registerSeller = createAsyncThunk(
     async (payload, { rejectWithValue }) => {
         try {
             const response = await authapi.registerSeller(payload);
-            return response.data?.message || "Registration successful. Please log in.";
+            return response.data?.message || "Registration successful. Please wait for approval.";
         } catch (error) {
             const errorMessage = error.response?.data?.message || 'Registration failed.';
             return rejectWithValue(errorMessage);
@@ -100,10 +102,19 @@ export const updateUserProfile = createAsyncThunk(
     }
 );
 
+// --- Safe LocalStorage Parsing ---
+const safeJSONParse = (data) => {
+    try {
+        return data && data !== "undefined" ? JSON.parse(data) : null;
+    } catch (e) {
+        return null;
+    }
+};
+
 // --- Initial State ---
 const storedToken = localStorage.getItem("jwt");
 const storedRole = localStorage.getItem("role");
-const storedUser = localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")) : null;
+const storedUser = safeJSONParse(localStorage.getItem("user"));
 
 const initialState = {
     user: storedUser,
@@ -152,7 +163,6 @@ const authSlice = createSlice({
             .addCase(registerSeller.fulfilled, (state) => {
                 state.isLoading = false;
             })
-            // 🚨 FIX: Moved verifyOtp.fulfilled out of addMatcher for cleaner syntax
             .addCase(verifyOtp.fulfilled, (state, action) => {
                 state.isLoading = false;
                 state.isAuthenticated = true;
@@ -165,7 +175,7 @@ const authSlice = createSlice({
                 localStorage.setItem("user", JSON.stringify(action.payload.user));
             })
 
-            // Global Pending / Rejected Matchers
+            // Global Pending Matcher
             .addMatcher(
                 (action) => action.type.endsWith('/pending'),
                 (state) => {
@@ -173,11 +183,12 @@ const authSlice = createSlice({
                     state.error = null;
                 }
             )
+
+            // Global Rejected Matcher
             .addMatcher(
                 (action) => action.type.endsWith('/rejected'),
                 (state, action) => {
                     state.isLoading = false;
-                    // The payload here is strictly the string we returned in rejectWithValue
                     state.error = action.payload;
                 }
             );
