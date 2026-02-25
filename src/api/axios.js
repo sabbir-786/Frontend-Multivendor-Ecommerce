@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:5454', // Your backend URL
+    baseURL: 'https://multivendorecommerce-production-000c.up.railway.app', // Your backend URL
 });
 
 // --- REQUEST INTERCEPTOR (You already have this, it's perfect) ---

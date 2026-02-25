@@ -19,13 +19,13 @@ export const sendOtp = createAsyncThunk(
             const response = await authapi.sendOtp(payload);
             return response.data;
         } catch (error) {
-            const message = error.response?.data?.message || 'Failed to send OTP.';
+            // Check for backend message, fallback to generic axios error message
+            const message = error.response?.data?.message || error.message || 'Failed to send OTP.';
             return rejectWithValue(message);
         }
     }
 );
 
-// Fetch Full User Profile
 export const getUserProfile = createAsyncThunk(
     'auth/getUserProfile',
     async (_, { rejectWithValue }) => {
@@ -50,15 +50,25 @@ export const verifyOtp = createAsyncThunk(
             localStorage.setItem('jwt', jwt);
 
             // 3. Immediately fetch the full user profile from the database
-            const profileAction = await dispatch(getUserProfile());
-            const userProfile = profileAction.payload;
+            // 🚨 FIX: Added .unwrap() so if this fails, it jumps to the catch block!
+            const userProfile = await dispatch(getUserProfile()).unwrap();
 
             return {
                 jwt,
                 role,
-                user: userProfile // Now we have the REAL fullName and details!
+                user: userProfile
             };
         } catch (error) {
+            // Clean up the invalid token if the process fails mid-way
+            localStorage.removeItem('jwt');
+
+            // 🚨 FIX: Safely extract the error.
+            // If the error came from getUserProfile().unwrap(), it's already a string.
+            if (typeof error === 'string') {
+                return rejectWithValue(error);
+            }
+
+            // Otherwise, it's an Axios error from authapi.verifyOtp
             const errorMessage = error.response?.data?.message || 'Invalid or Expired OTP';
             return rejectWithValue(errorMessage);
         }
@@ -70,9 +80,7 @@ export const registerSeller = createAsyncThunk(
     async (payload, { rejectWithValue }) => {
         try {
             const response = await authapi.registerSeller(payload);
-            // We just return the success message, intentionally throwing away the JWT
-            // so the user is forced to route to /login
-            return response.data.message || "Registration successful. Please log in.";
+            return response.data?.message || "Registration successful. Please log in.";
         } catch (error) {
             const errorMessage = error.response?.data?.message || 'Registration failed.';
             return rejectWithValue(errorMessage);
@@ -127,6 +135,7 @@ const authSlice = createSlice({
     },
     extraReducers: (builder) => {
         builder
+            // Fulfilled States
             .addCase(sendOtp.fulfilled, (state) => {
                 state.isLoading = false;
             })
@@ -142,8 +151,21 @@ const authSlice = createSlice({
             })
             .addCase(registerSeller.fulfilled, (state) => {
                 state.isLoading = false;
-                // Intentional: User stays logged out
             })
+            // 🚨 FIX: Moved verifyOtp.fulfilled out of addMatcher for cleaner syntax
+            .addCase(verifyOtp.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.isAuthenticated = true;
+                state.token = action.payload.jwt;
+                state.role = action.payload.role;
+                state.user = action.payload.user;
+
+                localStorage.setItem("jwt", action.payload.jwt);
+                localStorage.setItem("role", action.payload.role);
+                localStorage.setItem("user", JSON.stringify(action.payload.user));
+            })
+
+            // Global Pending / Rejected Matchers
             .addMatcher(
                 (action) => action.type.endsWith('/pending'),
                 (state) => {
@@ -155,21 +177,8 @@ const authSlice = createSlice({
                 (action) => action.type.endsWith('/rejected'),
                 (state, action) => {
                     state.isLoading = false;
+                    // The payload here is strictly the string we returned in rejectWithValue
                     state.error = action.payload;
-                }
-            )
-            .addMatcher(
-                (action) => [verifyOtp.fulfilled.type].includes(action.type),
-                (state, action) => {
-                    state.isLoading = false;
-                    state.isAuthenticated = true;
-                    state.token = action.payload.jwt;
-                    state.role = action.payload.role;
-                    state.user = action.payload.user;
-
-                    localStorage.setItem("jwt", action.payload.jwt);
-                    localStorage.setItem("role", action.payload.role);
-                    localStorage.setItem("user", JSON.stringify(action.payload.user));
                 }
             );
     }

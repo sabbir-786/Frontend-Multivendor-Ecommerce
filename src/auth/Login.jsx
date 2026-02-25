@@ -37,6 +37,7 @@ export default function Login() {
         register,
         handleSubmit,
         getValues,
+        setValue, // ✅ FIX: Extracted setValue so the error catch doesn't crash!
         formState: { errors, isSubmitting },
     } = useForm({
         resolver: zodResolver(loginSchema),
@@ -61,8 +62,9 @@ export default function Login() {
                 });
                 setStep(2);
             } catch (error) {
+                // ✅ FIX: Ensured the error description is strictly a string
                 toast.error("Failed to send OTP", {
-                    description: error || "Please check your details and try again.",
+                    description: typeof error === 'string' ? error : "Please check your details and try again.",
                 });
             }
         } else {
@@ -91,12 +93,36 @@ export default function Login() {
                 else navigate("/");
 
             } catch (error) {
+                // 1. Extract the exact error
+                let errorMessage = "Please check your OTP and try again.";
+
+                if (typeof error === 'string') {
+                    errorMessage = error;
+                } else if (error?.message) {
+                    errorMessage = error.message;
+                } else if (error?.response?.data?.message) {
+                    errorMessage = error.response.data.message;
+                }
+
+                // 2. Fire the toast (it should now pop up immediately!)
                 toast.error("Authentication Failed", {
-                    description: error || "Please check your OTP and try again.",
+                    description: errorMessage,
+                    duration: 5000
                 });
 
-                if (typeof error === 'string' && error.includes("approved by Admin")) {
-                    setStep(1);
+                // 3. Reset the form safely after 5 seconds
+                const lowerError = errorMessage.toLowerCase();
+
+                if (
+                    lowerError.includes("pending admin") ||
+                    lowerError.includes("suspended") ||
+                    lowerError.includes("banned")
+                ) {
+                    // ✅ FIX: setValue now works perfectly to clear the OTP box
+                    setValue("otp", "");
+                    setTimeout(() => {
+                        setStep(1);
+                    }, 5000);
                 }
             }
         }

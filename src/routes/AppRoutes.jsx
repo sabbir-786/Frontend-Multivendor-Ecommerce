@@ -7,6 +7,7 @@ import { USER_ROLES } from '../constants/roles';
 // Guards & Layouts
 import RoleGuard from '../guards/RoleGuard';
 import GuestGuard from '../guards/GuestGuard';
+import StorefrontGuard from '../guards/StorefrontGuard'; // <-- Make sure you created this file!
 import DashboardLayout from '../layouts/DashboardLayout';
 import MainLayout from '../layouts/MainLayout';
 
@@ -27,15 +28,17 @@ const AppRoutes = () => {
     return (
         <Routes>
 
-            {/* --- PUBLIC ROUTES (Visible to everyone, logged in or not) --- */}
-            <Route element={<MainLayout />}>
-                <Route path="/" element={<Home />} />
+            {/* --- PUBLIC / STOREFRONT ROUTES --- */}
+            {/* StorefrontGuard allows Customers and Guests, but kicks Admins/Sellers to their dashboards */}
+            <Route element={<StorefrontGuard />}>
+                <Route element={<MainLayout />}>
+                    <Route path="/" element={<Home />} />
+                </Route>
             </Route>
 
             {/* --- GUEST ROUTES (Only for users who are NOT logged in) --- */}
             <Route element={<GuestGuard />}>
                 <Route path="/login" element={<Login />} />
-                {/* Fixed the path to use a slash so it matches your URL */}
                 <Route path="/seller/signup" element={<SellerSignup />} />
             </Route>
 
@@ -62,6 +65,7 @@ const AppRoutes = () => {
             </Route>
 
             {/* --- FALLBACK ROUTE --- */}
+            {/* If a route is not found, send them home (guards will handle routing from there) */}
             <Route path="*" element={<Navigate to="/" replace />} />
 
         </Routes>
