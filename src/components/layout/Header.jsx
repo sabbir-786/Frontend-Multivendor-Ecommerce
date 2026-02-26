@@ -71,7 +71,7 @@ const Header = () => {
 
                     {/* Center: Brand Logo */}
                     <div className="flex-0 text-center">
-                        <Link to="/" className="text-white text-3xl md:text-4xl font-serif tracking-widest font-normal hover:opacity-90 transition-opacity">𝖭𝖤𝖷𝖳𝖪𝖠𝖱𝖳</Link>
+                        <Link to="/" className="text-white text-3xl md:text-4xl font-serif tracking-widest font-normal hover:opacity-90 transition-opacity">𝖭𝖤𝖷𝖪𝖠𝖱𝖳</Link>
                     </div>
 
                     {/* Right: Icons */}
