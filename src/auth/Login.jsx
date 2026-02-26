@@ -9,7 +9,6 @@ import { Loader2, ArrowLeft, ArrowRight, AlertCircle, XCircle } from "lucide-rea
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-// --- Validation Schema ---
 const loginSchema = z.object({
     contact: z.string().refine(
         (val) => {
@@ -42,7 +41,6 @@ export default function Login() {
         resolver: zodResolver(loginSchema),
     });
 
-    // Reset error state and go back to step 1
     const handleBackToLogin = () => {
         setErrorState(null);
         setValue("otp", "");
@@ -73,7 +71,6 @@ export default function Login() {
                 });
             }
         } else {
-            // STEP 2: Verify OTP
             if (!data.otp || data.otp.length < 6) {
                 toast.warning("Invalid Input", {
                     description: "Please enter a valid 6-digit OTP.",
